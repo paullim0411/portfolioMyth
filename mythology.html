@@ -87,11 +87,29 @@ footer{margin-top:80px;padding-top:24px;border-top:1px solid var(--line);font-si
 .btn.danger{border-color:#a1543a;background:#a1543a}
 .btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .memo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:16px}
-.memo-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:6px;border-top:4px solid var(--ink)}
-.memo-card:hover{border-color:var(--ink)}
+.memo-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:6px;border-top:4px solid var(--tc,var(--ink))}
+.memo-card:hover{border-color:var(--ink);border-top-color:var(--tc,var(--ink))}
 .memo-card h3{font-family:var(--serif);font-size:16px;font-weight:600;line-height:1.45;word-break:break-all}
 .memo-card .date{font-size:11px;color:var(--sub)}
+.memo-card .mlabel{font-size:10.5px;font-weight:700;color:#fff;background:var(--tc);padding:2px 9px;border-radius:4px;align-self:flex-start}
 .memo-empty{color:var(--sub);font-size:14px;margin-top:36px}
+
+/* ── 메모 태그 ── */
+.memo-tagbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.mtag{padding:6px 14px;border:1px solid var(--line);border-radius:20px;background:var(--card);font-size:13px;cursor:pointer;font-family:var(--sans);font-weight:500;color:#4a4a45;border-left:4px solid var(--tc,var(--line))}
+.mtag.on{background:var(--tc,var(--ink));border-color:var(--tc,var(--ink));color:#fff}
+.mtag.plain{border-left-width:1px}
+.mtag.plain.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.mtag:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.tagrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line);flex-wrap:wrap}
+.tagrow input[type=text]{flex:1;min-width:120px;font-family:var(--sans);font-size:14px;font-weight:500;border:1px solid var(--line);border-radius:6px;padding:7px 10px;background:#fff;color:var(--ink)}
+.tagrow input[type=text]:focus{outline:2px solid var(--ink);outline-offset:1px}
+.swatches{display:flex;gap:5px;flex-wrap:wrap}
+.sw{width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;background:var(--sc)}
+.sw.on{border-color:var(--ink)}
+.sw:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.tagdel{border:1px solid #a1543a;color:#a1543a;background:none;border-radius:6px;padding:6px 12px;font-size:12px;font-family:var(--sans);cursor:pointer}
+.tagdel:hover{background:#a1543a;color:#fff}
 
 /* ── 메모 팝업 ── */
 .overlay{position:fixed;inset:0;background:rgba(35,36,43,.45);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:60px 16px}
@@ -1414,6 +1432,7 @@ footer{margin-top:80px;padding-top:24px;border-top:1px solid var(--line);font-si
   <div class="memo-head">
     <h2>아이디어 메모</h2>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn ghost" id="tagManage">태그 관리</button>
       <button class="btn ghost" id="memoExport">내보내기</button>
       <button class="btn ghost" id="memoImport">가져오기</button>
       <button class="btn" id="memoNew">+ 새 메모</button>
@@ -1421,6 +1440,7 @@ footer{margin-top:80px;padding-top:24px;border-top:1px solid var(--line);font-si
     </div>
   </div>
   <p class="hint">메모는 지금 사용 중인 브라우저에 저장됩니다(localStorage). 다른 기기로 옮기거나 백업하려면 [내보내기]로 파일을 저장한 뒤, 옮길 기기에서 [가져오기]로 불러오세요.</p>
+  <div class="memo-tagbar" id="memoTagbar"></div>
   <div class="memo-grid" id="memoGrid"></div>
   <p class="memo-empty" id="memoEmpty">아직 메모가 없어요. [+ 새 메모]를 눌러 첫 아이디어를 남겨보세요.</p>
 </section>
@@ -1431,6 +1451,10 @@ footer{margin-top:80px;padding-top:24px;border-top:1px solid var(--line);font-si
       <div class="field-label">제목</div>
       <input id="mTitle" placeholder="메모 제목" maxlength="80">
     </div>
+    <div>
+      <div class="field-label">태그</div>
+      <div class="memo-tagbar" id="mTagPick" style="margin-top:8px"></div>
+    </div>
     <div style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:0">
       <div class="field-label">내용</div>
       <textarea id="mBody" placeholder="아이디어를 자유롭게 적어보세요"></textarea>
@@ -1440,6 +1464,39 @@ footer{margin-top:80px;padding-top:24px;border-top:1px solid var(--line);font-si
       <span class="spacer"></span>
       <button class="btn ghost" id="mClose">닫기</button>
       <button class="btn" id="mSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="exportOverlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div>
+      <div class="field-label">내보낼 메모 선택</div>
+      <label style="display:flex;align-items:center;gap:8px;padding:10px 2px;border-bottom:1px solid var(--line);font-size:13.5px;font-weight:700;cursor:pointer">
+        <input type="checkbox" id="expAll" style="width:16px;height:16px;accent-color:var(--ink)"> 전체 선택
+      </label>
+      <div id="expList" style="max-height:44vh;overflow-y:auto"></div>
+    </div>
+    <div class="row">
+      <span id="expCount" style="font-size:12.5px;color:var(--sub);align-self:center"></span>
+      <span class="spacer"></span>
+      <button class="btn ghost" id="expClose">취소</button>
+      <button class="btn" id="expGo">내보내기</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="tagOverlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div>
+      <div class="field-label">태그 관리</div>
+      <div id="tagList" style="max-height:50vh;overflow-y:auto"></div>
+      <button class="btn ghost" id="tagAdd" style="margin-top:12px">+ 새 태그</button>
+    </div>
+    <div class="row">
+      <span style="font-size:12px;color:var(--sub);align-self:center">이름과 색은 바로 저장됩니다</span>
+      <span class="spacer"></span>
+      <button class="btn" id="tagDone">완료</button>
     </div>
   </div>
 </div>
@@ -1513,9 +1570,14 @@ document.querySelectorAll('.side .nav').forEach(b=>{
 
 /* ── 아이디어 메모 ── */
 const MEMO_KEY='myth_memos_v1';
-let memos=[];
+const TAG_KEY='myth_memo_tags_v1';
+const PALETTE=['#2d5d8e','#4a6670','#b8862d','#a1543a','#3f6b4f','#c26a1f','#8f2f3b','#d0583c','#2e6e5e','#54486e','#7d3b5e'];
+let memos=[],tags=[];
 try{memos=JSON.parse(localStorage.getItem(MEMO_KEY)||'[]');}catch(e){memos=[];}
+try{tags=JSON.parse(localStorage.getItem(TAG_KEY)||'[]');}catch(e){tags=[];}
 let editingId=null;
+let filterTag=null;   /* 목록 필터: null = 전체 */
+let pickedTag=null;   /* 팝업에서 선택된 태그 */
 
 const memoGrid=document.getElementById('memoGrid');
 const memoEmpty=document.getElementById('memoEmpty');
@@ -1528,10 +1590,40 @@ function memoSaveAll(){
   try{localStorage.setItem(MEMO_KEY,JSON.stringify(memos));}
   catch(e){alert('저장에 실패했어요. 이 환경에서는 브라우저 저장소를 쓸 수 없습니다.');}
 }
+function tagSaveAll(){
+  try{localStorage.setItem(TAG_KEY,JSON.stringify(tags));}catch(e){}
+}
+function tagById(id){return tags.find(t=>t.id===id)||null;}
+
+/* 태그 필터 바 */
+function renderTagbar(){
+  const bar=document.getElementById('memoTagbar');
+  bar.innerHTML='';
+  const all=document.createElement('button');
+  all.className='mtag plain'+(filterTag===null?' on':'');
+  all.textContent='전체';
+  all.addEventListener('click',()=>{filterTag=null;renderTagbar();renderMemos();});
+  bar.appendChild(all);
+  tags.forEach(t=>{
+    const b=document.createElement('button');
+    b.className='mtag'+(filterTag===t.id?' on':'');
+    b.style.setProperty('--tc',t.color);
+    b.textContent=t.name||'(이름 없음)';
+    b.addEventListener('click',()=>{filterTag=(filterTag===t.id?null:t.id);renderTagbar();renderMemos();});
+    bar.appendChild(b);
+  });
+}
 function renderMemos(){
   memoGrid.innerHTML='';
-  memos.forEach(m=>{
+  const list=memos.filter(m=>filterTag===null||m.tag===filterTag);
+  list.forEach(m=>{
     const c=document.createElement('div');c.className='memo-card';
+    const t=tagById(m.tag);
+    if(t){
+      c.style.setProperty('--tc',t.color);
+      const lb=document.createElement('span');lb.className='mlabel';lb.textContent=t.name||'(이름 없음)';
+      c.appendChild(lb);
+    }
     const h=document.createElement('h3');h.textContent=m.title||'(제목 없음)';
     const d=document.createElement('div');d.className='date';
     d.textContent=new Date(m.updated).toLocaleString('ko-KR',{dateStyle:'medium',timeStyle:'short'});
@@ -1539,13 +1631,39 @@ function renderMemos(){
     c.addEventListener('click',()=>openMemo(m.id));
     memoGrid.appendChild(c);
   });
-  memoEmpty.style.display=memos.length?'none':'block';
+  memoEmpty.textContent=memos.length===0
+    ?'아직 메모가 없어요. [+ 새 메모]를 눌러 첫 아이디어를 남겨보세요.'
+    :'이 태그에 해당하는 메모가 없어요.';
+  memoEmpty.style.display=list.length?'none':'block';
+}
+/* 팝업 안 태그 선택 */
+function renderTagPick(){
+  const box=document.getElementById('mTagPick');
+  box.innerHTML='';
+  if(!tags.length){
+    const s=document.createElement('span');
+    s.style.cssText='font-size:12.5px;color:var(--sub)';
+    s.textContent='아직 태그가 없어요 — [태그 관리]에서 만들 수 있습니다.';
+    box.appendChild(s);
+    return;
+  }
+  tags.forEach(t=>{
+    const b=document.createElement('button');
+    b.type='button';
+    b.className='mtag'+(pickedTag===t.id?' on':'');
+    b.style.setProperty('--tc',t.color);
+    b.textContent=t.name||'(이름 없음)';
+    b.addEventListener('click',()=>{pickedTag=(pickedTag===t.id?null:t.id);renderTagPick();});
+    box.appendChild(b);
+  });
 }
 function openMemo(id){
   editingId=id;
   const m=memos.find(x=>x.id===id);
   mTitle.value=m?m.title:'';
   mBody.value=m?m.body:'';
+  pickedTag=m?(m.tag||null):(filterTag||null);
+  renderTagPick();
   mDelete.style.display=m?'':'none';
   overlay.classList.add('open');
   mTitle.focus();
@@ -1559,9 +1677,9 @@ document.getElementById('mSave').addEventListener('click',()=>{
   if(!title&&!body.trim()){closeMemo();return;}
   if(editingId){
     const m=memos.find(x=>x.id===editingId);
-    if(m){m.title=title;m.body=body;m.updated=Date.now();}
+    if(m){m.title=title;m.body=body;m.tag=pickedTag;m.updated=Date.now();}
   }else{
-    memos.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),title,body,updated:Date.now()});
+    memos.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),title,body,tag:pickedTag,updated:Date.now()});
   }
   memoSaveAll();renderMemos();closeMemo();
 });
@@ -1572,18 +1690,121 @@ mDelete.addEventListener('click',()=>{
   memoSaveAll();renderMemos();closeMemo();
 });
 overlay.addEventListener('click',e=>{if(e.target===overlay)closeMemo();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.classList.contains('open'))closeMemo();});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  if(overlay.classList.contains('open'))closeMemo();
+  if(exportOverlay.classList.contains('open'))exportOverlay.classList.remove('open');
+  if(tagOverlay.classList.contains('open'))closeTagManage();
+});
 
-/* ── 내보내기 / 가져오기 ── */
+/* ── 태그 관리 ── */
+const tagOverlay=document.getElementById('tagOverlay');
+const tagListEl=document.getElementById('tagList');
+
+function renderTagList(){
+  tagListEl.innerHTML='';
+  if(!tags.length){
+    const s=document.createElement('p');
+    s.style.cssText='font-size:13px;color:var(--sub);padding:10px 0';
+    s.textContent='태그가 없어요. [+ 새 태그]로 추가해 보세요.';
+    tagListEl.appendChild(s);
+    return;
+  }
+  tags.forEach(t=>{
+    const row=document.createElement('div');row.className='tagrow';
+    const name=document.createElement('input');
+    name.type='text';name.value=t.name;name.maxLength=20;name.placeholder='태그 이름';
+    name.addEventListener('input',()=>{t.name=name.value;tagSaveAll();renderTagbar();renderMemos();});
+    const sws=document.createElement('div');sws.className='swatches';
+    PALETTE.forEach(c=>{
+      const b=document.createElement('button');
+      b.type='button';b.className='sw'+(t.color===c?' on':'');
+      b.style.setProperty('--sc',c);
+      b.setAttribute('aria-label','색상 '+c);
+      b.addEventListener('click',()=>{t.color=c;tagSaveAll();renderTagList();renderTagbar();renderMemos();});
+      sws.appendChild(b);
+    });
+    const del=document.createElement('button');
+    del.type='button';del.className='tagdel';del.textContent='삭제';
+    del.addEventListener('click',()=>{
+      const used=memos.filter(m=>m.tag===t.id).length;
+      if(!confirm('['+(t.name||'(이름 없음)')+'] 태그를 삭제할까요?'+(used?'\n이 태그가 달린 메모 '+used+'개는 태그 없음 상태가 됩니다(메모는 삭제되지 않아요).':'')))return;
+      tags=tags.filter(x=>x.id!==t.id);
+      memos.forEach(m=>{if(m.tag===t.id)m.tag=null;});
+      if(filterTag===t.id)filterTag=null;
+      if(pickedTag===t.id)pickedTag=null;
+      tagSaveAll();memoSaveAll();
+      renderTagList();renderTagbar();renderMemos();
+    });
+    row.append(name,sws,del);
+    tagListEl.appendChild(row);
+  });
+}
+document.getElementById('tagManage').addEventListener('click',()=>{
+  renderTagList();
+  tagOverlay.classList.add('open');
+});
+document.getElementById('tagAdd').addEventListener('click',()=>{
+  const usedColors=new Set(tags.map(t=>t.color));
+  const color=PALETTE.find(c=>!usedColors.has(c))||PALETTE[tags.length%PALETTE.length];
+  tags.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:'',color});
+  tagSaveAll();renderTagList();renderTagbar();
+  const inputs=tagListEl.querySelectorAll('input[type=text]');
+  if(inputs.length)inputs[inputs.length-1].focus();
+});
+function closeTagManage(){tagOverlay.classList.remove('open');renderTagbar();renderMemos();}
+document.getElementById('tagDone').addEventListener('click',closeTagManage);
+tagOverlay.addEventListener('click',e=>{if(e.target===tagOverlay)closeTagManage();});
+
+/* ── 내보내기 (선택형) / 가져오기 ── */
+const exportOverlay=document.getElementById('exportOverlay');
+const expList=document.getElementById('expList');
+const expAll=document.getElementById('expAll');
+const expCount=document.getElementById('expCount');
+
+function updateExpCount(){
+  const n=expList.querySelectorAll('input:checked').length;
+  expCount.textContent=n+'개 선택됨';
+  expAll.checked=n===memos.length&&n>0;
+}
 document.getElementById('memoExport').addEventListener('click',()=>{
   if(!memos.length){alert('내보낼 메모가 없어요.');return;}
-  const blob=new Blob([JSON.stringify({app:'myth_memos',version:1,exported:Date.now(),memos},null,2)],{type:'application/json'});
+  expList.innerHTML='';
+  memos.forEach(m=>{
+    const label=document.createElement('label');
+    label.style.cssText='display:flex;align-items:center;gap:8px;padding:10px 2px;border-bottom:1px dashed var(--line);font-size:13.5px;cursor:pointer';
+    const cb=document.createElement('input');
+    cb.type='checkbox';cb.value=m.id;cb.checked=true;
+    cb.style.cssText='width:16px;height:16px;accent-color:var(--ink);flex-shrink:0';
+    cb.addEventListener('change',updateExpCount);
+    const t=document.createElement('span');
+    const tg=tagById(m.tag);
+    t.textContent=(tg?('['+(tg.name||'(이름 없음)')+'] '):'')+(m.title||'(제목 없음)');
+    label.append(cb,t);
+    expList.appendChild(label);
+  });
+  updateExpCount();
+  exportOverlay.classList.add('open');
+});
+expAll.addEventListener('change',()=>{
+  expList.querySelectorAll('input').forEach(cb=>cb.checked=expAll.checked);
+  updateExpCount();
+});
+document.getElementById('expClose').addEventListener('click',()=>exportOverlay.classList.remove('open'));
+exportOverlay.addEventListener('click',e=>{if(e.target===exportOverlay)exportOverlay.classList.remove('open');});
+document.getElementById('expGo').addEventListener('click',()=>{
+  const ids=new Set([...expList.querySelectorAll('input:checked')].map(cb=>cb.value));
+  if(!ids.size){alert('내보낼 메모를 하나 이상 선택해 주세요.');return;}
+  const selected=memos.filter(m=>ids.has(m.id));
+  const usedTags=tags.filter(t=>selected.some(m=>m.tag===t.id));
+  const blob=new Blob([JSON.stringify({app:'myth_memos',version:2,exported:Date.now(),memos:selected,tags:usedTags},null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   const d=new Date();
   a.download='아이디어메모_'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'.json';
   a.click();
   URL.revokeObjectURL(a.href);
+  exportOverlay.classList.remove('open');
 });
 const memoFile=document.getElementById('memoFile');
 document.getElementById('memoImport').addEventListener('click',()=>memoFile.click());
@@ -1596,24 +1817,37 @@ memoFile.addEventListener('change',()=>{
       const data=JSON.parse(reader.result);
       const list=Array.isArray(data)?data:(data&&Array.isArray(data.memos)?data.memos:null);
       if(!list)throw new Error('format');
+      /* 태그 병합 */
+      if(data&&Array.isArray(data.tags)){
+        data.tags.forEach(t=>{
+          if(!t||typeof t!=='object')return;
+          const item={id:String(t.id||''),name:String(t.name||''),color:String(t.color||PALETTE[0])};
+          if(!item.id)return;
+          const exist=tags.find(x=>x.id===item.id);
+          if(!exist)tags.push(item);
+        });
+        tagSaveAll();
+      }
       let added=0,updated=0;
       list.forEach(m=>{
         if(!m||typeof m!=='object')return;
         const item={id:String(m.id||Date.now().toString(36)+Math.random().toString(36).slice(2,6)),
-                    title:String(m.title||''),body:String(m.body||''),updated:Number(m.updated)||Date.now()};
+                    title:String(m.title||''),body:String(m.body||''),
+                    tag:(m.tag?String(m.tag):null),updated:Number(m.updated)||Date.now()};
         const exist=memos.find(x=>x.id===item.id);
         if(exist){
           if(item.updated>exist.updated){Object.assign(exist,item);updated++;}
         }else{memos.push(item);added++;}
       });
       memos.sort((a,b)=>b.updated-a.updated);
-      memoSaveAll();renderMemos();
+      memoSaveAll();renderTagbar();renderMemos();
       alert('가져오기 완료 — 추가 '+added+'개, 갱신 '+updated+'개');
     }catch(e){alert('가져오기에 실패했어요. [내보내기]로 만든 JSON 파일인지 확인해 주세요.');}
     memoFile.value='';
   };
   reader.readAsText(f);
 });
+renderTagbar();
 renderMemos();
 </script>
 </body>
